@@ -95,17 +95,23 @@ def train_model():
         label2id=label2id,
     )
 
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    print(device)
+    model.to(device)
+
     training_args = TrainingArguments(
         output_dir="./results",
-        per_device_train_batch_size=16,
+        per_device_train_batch_size=32,
+        per_device_eval_batch_size=32,
         evaluation_strategy="steps",
-        num_train_epochs=4,
+        num_train_epochs=5,
+        dataloader_num_workers = 4,
         fp16=True,
         save_steps=300,
         eval_steps=300,
-        logging_steps=10,
         learning_rate=2e-4,
-        save_total_limit=2,
+        save_total_limit=5,
+        load_best_model_at_end = True,
         remove_unused_columns=False,
     )
 
@@ -120,6 +126,7 @@ def train_model():
     )
 
     trainer.train()
+    # trainer.evaluate(fire_transformed["test"])
 
 
 def main():

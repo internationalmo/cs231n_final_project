@@ -3,7 +3,7 @@ import subprocess
 import sys
 
 # Install requirements from requirements.txt
-subprocess.check_call([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+subprocess.check_call([sys.executable, "-m", "pip", "--no-cache-dir", "install", "-r", "requirements.txt"])
 
 # Import modules to ensure installation success
 import torch
