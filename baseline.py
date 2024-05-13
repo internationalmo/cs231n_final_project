@@ -12,21 +12,9 @@ import accelerate
 from datasets import load_metric
 from torchvision.transforms import RandomResizedCrop, Compose, Normalize, ToTensor, Resize
 from torchvision.transforms.functional import to_pil_image
-
-# Transformations
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-])
-
-
-# Custom function to convert the loaded dataset into a format usable by PyTorch
-def transform_example(example):
-    image = transform(example['image'])
-    # print(type(image))
-    label = example['label']
-    return {'image': image, 'label': label}
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import numpy as np
+import matplotlib.pyplot as plt
 
 
 # Applying transformation
@@ -34,8 +22,11 @@ def transform_example(example):
 def get_split_dataset():
     dataset = load_dataset("blanchon/FireRisk")
 
+    # Shuffle the data, then selct a subset
+    dataset = dataset['train'].shuffle(seed=42).select(range(1000))
+
     # Split the dataset into training (80%), validation (10%), and test (10%)
-    train_test_split = dataset['train'].train_test_split(test_size=0.20)  # Splitting off 20% for validation + test
+    train_test_split = dataset.train_test_split(test_size=0.20)  # Splitting off 20% for validation + test
     test_val_split = train_test_split['test'].train_test_split(
         test_size=0.50)  # Split 50% of the 20% for test, which makes it 10% of the total
 
@@ -53,9 +44,8 @@ def get_split_dataset():
 
     return split_dataset
 
-
-def transform_dataset(split_dataset):
-    feature_extractor = AutoFeatureExtractor.from_pretrained("google/vit-base-patch16-224-in21k")
+def transform_dataset(split_dataset, selected_model):
+    feature_extractor = AutoFeatureExtractor.from_pretrained(selected_model)
 
     normalize = Normalize(mean=feature_extractor.image_mean, std=feature_extractor.image_std)
     # _transforms = Compose([RandomResizedCrop(feature_extractor.size), ToTensor(), normalize])
@@ -76,10 +66,36 @@ def compute_metrics(eval_pred):
     predictions = logits.argmax(-1)
     return accuracy_metric.compute(predictions=predictions, references=labels)
 
+# Function to compute confusion matrix
+def compute_confusion_matrix(trainer, eval_dataset, id2label):
+    predictions, labels, _ = trainer.predict(eval_dataset)
+    preds = np.argmax(predictions, axis=1)
+    cm = confusion_matrix(labels, preds)
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[id2label[str(i)] for i in range(len(id2label))])
+    fig, ax = plt.subplots(figsize=(10, 10))
+    disp.plot(cmap=plt.cm.Blues, ax=ax)
+    plt.title("Confusion Matrix")
+    plt.show()
+
+def count_labels(dataset_split, split_name,labels):
+    label_counts = {label: 0 for label in labels}
+    for label in dataset_split['label']:
+        label_counts[labels[label]] += 1
+    plt.figure(figsize=(10, 6))
+    plt.bar(label_counts.keys(), label_counts.values())
+    plt.xlabel('Classes')
+    plt.ylabel('Number of Samples')
+    plt.title(f'Data Distribution in {split_name} Set')
+    plt.xticks(rotation=45)
+    plt.show()
 
 def train_model():
+    available_models = {"resnet": "microsoft/resnet-50", "vit": "google/vit-base-patch16-224-in21k"}
+    # Select which model
+    selected_model = available_models["resnet"]
+
     split_dataset = get_split_dataset()
-    fire_transformed, feature_extractor = transform_dataset(split_dataset)
+    fire_transformed, feature_extractor = transform_dataset(split_dataset, selected_model)
     labels = split_dataset["train"].features["label"].names
     label2id, id2label = dict(), dict()
     for i, label in enumerate(labels):
@@ -88,11 +104,11 @@ def train_model():
 
     data_collator = DefaultDataCollator()
 
-    model = AutoModelForImageClassification.from_pretrained(
-        "google/vit-base-patch16-224-in21k",
+    model = AutoModelForImageClassification.from_pretrained(selected_model,
         num_labels=len(labels),
         id2label=id2label,
         label2id=label2id,
+        ignore_mismatched_sizes = True,
     )
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -104,8 +120,7 @@ def train_model():
         per_device_train_batch_size=32,
         per_device_eval_batch_size=32,
         evaluation_strategy="steps",
-        num_train_epochs=5,
-        dataloader_num_workers = 4,
+        num_train_epochs=1,
         fp16=True,
         save_steps=300,
         eval_steps=300,
@@ -124,8 +139,14 @@ def train_model():
         compute_metrics=compute_metrics,
         tokenizer=feature_extractor,
     )
+    # Plot label distribution
+    count_labels(split_dataset['train'], "Training",labels)
+    count_labels(split_dataset['validation'], "Validation",labels)
+    count_labels(split_dataset['test'], "Test",labels)
 
     trainer.train()
+    compute_confusion_matrix(trainer, fire_transformed["test"],id2label)
+    
     # trainer.evaluate(fire_transformed["test"])
 
 
