@@ -14,7 +14,7 @@ from PIL import Image
 from copy import deepcopy
 import accelerate
 from datasets import load_metric
-from torchvision.transforms import RandomResizedCrop, Compose, Normalize, ToTensor, Resize
+from torchvision.transforms import RandomResizedCrop, Compose, Normalize, ToTensor, Resize, RandomHorizontalFlip, RandomVerticalFlip
 from torchvision.transforms.functional import to_pil_image
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 import os
@@ -64,24 +64,27 @@ def get_split_dataset(num_examples):
 
     return split_dataset
 
-def transform_dataset(split_dataset, selected_model, to_normalize):
+def transform_dataset(split_dataset, selected_model, normalize=True, vertical_flip=False, horizontal_flip=False, vertical_p=0.5, horizontal_p=0.5):
     feature_extractor = AutoFeatureExtractor.from_pretrained(selected_model)
+    
+    transform_list = [Resize((224, 224)), ToTensor()]
 
-    normalize = Normalize(mean=feature_extractor.image_mean, std=feature_extractor.image_std)
-    if to_normalize:
-        _transforms = Compose([Resize((224, 224)), ToTensor(), normalize])
-    else:
-        _transforms = Compose([Resize((224, 224)), ToTensor()])
+    if vertical_flip:
+        transform_list.append(RandomVerticalFlip(p=vertical_p))
+    if horizontal_flip:
+        transform_list.append(RandomHorizontalFlip(p=horizontal_p))
+    if normalize:
+        transform_list.append(Normalize(mean=feature_extractor.image_mean, std=feature_extractor.image_std))
 
+    _transforms = Compose(transform_list)
+    
     def my_transforms(examples):
-        if "image" in examples:
-            examples["pixel_values"] = [_transforms(img.convert("RGB")) for img in examples["image"]]
-            del examples["image"]
+        examples["pixel_values"] = [_transforms(img.convert("RGB")) for img in examples["image"]]
+        del examples["image"]
         return examples
 
     fire_transformed = split_dataset.with_transform(my_transforms)
     return fire_transformed, feature_extractor
-
 
 def compute_metrics(eval_pred):
     accuracy_metric = load_metric("accuracy")
@@ -129,7 +132,8 @@ def train_model(args):
     selected_model = available_models[args.model]
 
     split_dataset = get_split_dataset(args.num_examples)
-    fire_transformed, feature_extractor = transform_dataset(split_dataset, selected_model, args.to_normalize)
+    print(args.horizontal_p, args.vertical_p)
+    fire_transformed, feature_extractor = transform_dataset(split_dataset, selected_model, args.to_normalize, args.to_vflip, args.to_hflip, args.vertical_p,args.horizontal_p)
     labels = split_dataset["train"].features["label"].names
     label2id, id2label = dict(), dict()
     for i, label in enumerate(labels):
@@ -171,9 +175,9 @@ def train_model(args):
         tokenizer=feature_extractor,
     )
     # Plot label distribution
-    count_labels(split_dataset['train'], "Training",labels)
-    count_labels(split_dataset['validation'], "Validation",labels)
-    count_labels(split_dataset['test'], "Test",labels)
+    #count_labels(split_dataset['train'], "Training",labels)
+    #count_labels(split_dataset['validation'], "Validation",labels)
+    #count_labels(split_dataset['test'], "Test",labels)
 
     trainer.add_callback(CustomCallback(trainer)) 
     trainer.train()
@@ -186,10 +190,14 @@ def train_model(args):
 def main():
 
 #   Example command to run:
-#        python3 python3 baseline.py --model="resnet" --model_output_dir="./dummy_results" --confusion_matrix_path="./heatmaps/heatmap_v2.png"
+#        python3 python3 baseline.py --model="resnet" --to_normalize=1 --to_vflip=1 --to_hflip=1 --model_output_dir="./dummy_results" --confusion_matrix_path="./heatmaps/heatmap_v2.png"
     parser = argparse.ArgumentParser(description="Process file with different methods.")
     parser.add_argument("--model", type=str, choices=["resnet", "vit"], required=True, help="Choose either 'resnet' or 'vit'.")
     parser.add_argument("--to_normalize", type=int, choices=[1, 0], default=1, help="1 to normalize or 0 to not normalize. Default is to normalize")
+    parser.add_argument("--to_vflip", type=int, choices=[1, 0], default=0, help="1 to vertical flip or 0 to not vertical flip. Default is to 0")
+    parser.add_argument("--to_hflip", type=int, choices=[1, 0], default=0, help="1 to horizontal flip or 0 to not horizontal flip. Default is to 0")
+    parser.add_argument("--horizontal_p", type=float, default=.5, help="Probability of horzontal flipping. Default is to .5")
+    parser.add_argument("--vertical_p", type=float, default=.5, help="Probability of vertical flipping. Default is to .5")
     parser.add_argument("--model_output_dir", type=str, required=True, help="The directory path for the model results.")
     parser.add_argument("--confusion_matrix_path", type=str, default=None, help="The full path to save the confusion matrix. Defaults to 'None' so nothing is saved.")
     parser.add_argument("--num_examples", type=int, default=None, help="The total number of examples to use. Helpful for doing light testing.")
