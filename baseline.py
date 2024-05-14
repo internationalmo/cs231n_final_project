@@ -158,10 +158,10 @@ def train_model(args):
         per_device_train_batch_size=32,
         per_device_eval_batch_size=32,
         evaluation_strategy="epoch",
+        save_strategy="epoch",
         num_train_epochs=5,
         fp16=True,
         learning_rate=2e-4,
-        save_total_limit=5,
         remove_unused_columns=False,
     )
 
