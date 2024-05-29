@@ -187,25 +187,27 @@ def train_model(args):
     # trainer.evaluate(fire_transformed["test"])
 
 
-def main():
+# This file should be used. Please run vit.py or resnet.py. This file is being kept for
+# quick reference to help in developing code.
+# def main():
 
-#   Example command to run:
-#        python3 python3 baseline.py --model="resnet" --to_normalize=1 --to_vflip=1 --to_hflip=1 --model_output_dir="./dummy_results" --confusion_matrix_path="./heatmaps/heatmap_v2.png"
-    parser = argparse.ArgumentParser(description="Process file with different methods.")
-    parser.add_argument("--model", type=str, choices=["resnet", "vit"], required=True, help="Choose either 'resnet' or 'vit'.")
-    parser.add_argument("--to_normalize", type=int, choices=[1, 0], default=1, help="1 to normalize or 0 to not normalize. Default is to normalize")
-    parser.add_argument("--to_vflip", type=int, choices=[1, 0], default=0, help="1 to vertical flip or 0 to not vertical flip. Default is to 0")
-    parser.add_argument("--to_hflip", type=int, choices=[1, 0], default=0, help="1 to horizontal flip or 0 to not horizontal flip. Default is to 0")
-    parser.add_argument("--horizontal_p", type=float, default=.5, help="Probability of horzontal flipping. Default is to .5")
-    parser.add_argument("--vertical_p", type=float, default=.5, help="Probability of vertical flipping. Default is to .5")
-    parser.add_argument("--model_output_dir", type=str, required=True, help="The directory path for the model results.")
-    parser.add_argument("--confusion_matrix_path", type=str, default=None, help="The full path to save the confusion matrix. Defaults to 'None' so nothing is saved.")
-    parser.add_argument("--num_examples", type=int, default=None, help="The total number of examples to use. Helpful for doing light testing.")
-    args = parser.parse_args()
+# #   Example command to run:
+# #        python3 python3 baseline.py --model="resnet" --to_normalize=1 --to_vflip=1 --to_hflip=1 --model_output_dir="./dummy_results" --confusion_matrix_path="./heatmaps/heatmap_v2.png"
+#     parser = argparse.ArgumentParser(description="Process file with different methods.")
+#     parser.add_argument("--model", type=str, choices=["resnet", "vit"], required=True, help="Choose either 'resnet' or 'vit'.")
+#     parser.add_argument("--to_normalize", type=int, choices=[1, 0], default=1, help="1 to normalize or 0 to not normalize. Default is to normalize")
+#     parser.add_argument("--to_vflip", type=int, choices=[1, 0], default=0, help="1 to vertical flip or 0 to not vertical flip. Default is to 0")
+#     parser.add_argument("--to_hflip", type=int, choices=[1, 0], default=0, help="1 to horizontal flip or 0 to not horizontal flip. Default is to 0")
+#     parser.add_argument("--horizontal_p", type=float, default=.5, help="Probability of horzontal flipping. Default is to .5")
+#     parser.add_argument("--vertical_p", type=float, default=.5, help="Probability of vertical flipping. Default is to .5")
+#     parser.add_argument("--model_output_dir", type=str, required=True, help="The directory path for the model results.")
+#     parser.add_argument("--confusion_matrix_path", type=str, default=None, help="The full path to save the confusion matrix. Defaults to 'None' so nothing is saved.")
+#     parser.add_argument("--num_examples", type=int, default=None, help="The total number of examples to use. Helpful for doing light testing.")
+#     args = parser.parse_args()
 
-    train_model(args)
+#     train_model(args)
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    main()
+# # Press the green button in the gutter to run the script.
+# if __name__ == '__main__':
+#     main()
