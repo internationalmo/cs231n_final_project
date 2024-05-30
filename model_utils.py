@@ -101,9 +101,10 @@ def compute_metrics(eval_pred):
     logits, labels = eval_pred
     predictions = logits.argmax(-1)
     acc = accuracy_metric.compute(predictions=predictions, references=labels)
-    f1 = f1_metric.compute(predictions=predictions, references=labels, average='micro')
-    recall = recall_metric.compute(predictions=predictions, references=labels, average='micro')
-    precision = precision_metric.compute(predictions=predictions, references=labels, average='micro')
+    f1 = f1_metric.compute(predictions=predictions, references=labels, average='macro')
+    recall = recall_metric.compute(predictions=predictions, references=labels, average='macro')
+    precision = precision_metric.compute(predictions=predictions, references=labels, average='macro')
+
     return {
         "accuracy": acc,
         "f1": f1,
